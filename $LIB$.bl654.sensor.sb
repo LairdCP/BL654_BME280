@@ -1,0 +1,1119 @@
+// Copyright (c) 2019, Laird Connectivity
+//
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted, provided that the above
+// copyright notice and this permission notice appear in all copies.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+// ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+// IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+//
+// SPDX-License-Identifier:ISC
+//
+// $LIB$.bl654.sensor.sb
+//
+// This is the application code for the sensor, please download the $autorun$
+// file and not this file
+//
+//******************************************************************************
+
+//******************************************************************************
+// Definitions
+//******************************************************************************
+
+// GAP Service defines
+#define DEVICE_NAME                             "BL654 BME280 Sensor"
+#define NAME_WRITABLE                           0                     // Device name writable, set to 0 to make it read-only
+#define APPEARANCE                              512                   // Generic Tag
+#define CONNECTION_INTERVAL_MIN                 7500                  // This is the minimum interval allowed by the spec
+#define CONNECTION_INTERVAL_MAX                 4000000               // This is the maximum interval allowed by the spec
+#define SUPERVISION_TIMEOUT                     32000000              // This is the maximum supervision timeout allowed by the spec
+#define SLAVE_LATENCY                           2                     // Set slave latency to 2 as this is the max allowed with given parameters
+
+// Device information service defines
+#define MANF_NAME                               "Laird Connectivity"
+#define MODELSTR                                "BL654"
+#define SERIALNUM                               ""
+#define HWREV                                   "HwRev3.0"            // Hardware revision
+#define SWREV                                   "SwRev1.0"            // Software revision
+#define SYSID                                   ""
+#define REGLIST                                 ""
+#define PNPID                                   ""
+
+// BLE Settings
+#define BLE_TX_POWER                            8                     //Tx power in dBm (can be: 8, 7, 6, 5, 4, 3, 2, 0, -4, -8, -12, -16, -20 or -40)
+
+// Advertising defines
+#define ADVERT_TYPE                             0                     // Undirected scannable connectable advert
+#define ADVERT_INTERVAL                         1000                  // Interval between two adverts in millisconds
+#define ADVERT_TIMEOUT                          0                     // No timeout - app will always be advertising
+#define ADVERT_FILTER_POLICY                    0                     // Allow all devices to scan and connect
+#define ADVERT_FLAGS_AD                         2                     // Bit 0 is set for Limited discov, Bit 1 is set for General discov
+#define ADVERT_APPEARANCE                       1                     // 0: omit appearance, 1: Add appearance advert as specified in BleGapSvcInit()
+#define ADVERT_MAX_DEV_NAME_SIZE                19                    // BL654 BME280 Sensor
+
+// BLE EVENT MSG IDs
+#define BLE_EVBLEMSGID_CONNECT                  0                     // Event ID for connection, msgCtx = connection handle
+#define BLE_EVBLEMSGID_DISCONNECT               1                     // Event ID for disconnection, msgCtx = connection handle
+#define BLE_EVBLEMSGID_NEW_BOND                 10                    // msgCtx = connection handle
+#define BLE_EVBLEMSGID_AUTH_KEY_REQUEST         11                    // msgCtx = 1 for passkey, 2 for 16 byte OOB data
+#define BLE_EVBLEMSGID_CONN_TO_BONDED_MASTER    16                    // msgCtx = connection handle
+#define BLE_EVBLEMSGID_UPDATED_BOND             17                    // msgCtx = connection handle
+#define BLE_EVBLEMSGID_ENCRYPTED                18                    // msgCtx = connection handle
+#define BLE_EVBLEMSGID_UNENCRYPTED              20                    // msgCtx = connection handle
+#define BLE_EVBLEMSGID_DEVICENAME_WRITE         21                    // msgCtx = connection handle
+#define BLE_EVBLEMSGID_BOND_ADDFAIL             22                    // msgCtx = connection handle
+#define BLE_EVBLEMSGID_AUTHENTICATION_FAILED    26                    // msgCtx = connection handle
+#define BLE_EVBLEMSGID_LESC_PAIRING             27                    // msgCtx = connection handle
+
+// BLE Pairing type
+#define BLE_PAIR_LEGACY_PAIRING                 0                     // Legacy pairing (Bluetooth 4.1 and earlier) is default pairing mechanism
+#define BLE_PAIR_LESC_PAIRING                   1                     // LE Secure Connections Pairing (Bluetooth 4.2+) is default pairing mechanism
+
+// Pairing I/O capability
+#define BLE_IOCAPABILITY_NONE                   0
+#define BLE_IOCAPABILITY_DISPLAY_YESNO          1
+#define BLE_IOCAPABILITY_KEYBOARD_ONLY          2
+#define BLE_IOCAPABILITY_DISPLAY_ONLY           3
+#define BLE_IOCAPABILITY_KEYBOARD_DISPLAY       4
+#define BLE_IOCAPABILITY_ILLEGAL                5
+
+// GATT Server Defines
+#define BLE_SERVICE_SECONDARY                   0
+#define BLE_SERVICE_PRIMARY                     1
+
+// GATT characteristic properties
+#define BLE_CHAR_PROPERTIES_BROADCAST           0x01
+#define BLE_CHAR_PROPERTIES_READ                0x02
+#define BLE_CHAR_PROPERTIES_WRITE_WO_RESPONSE   0x04
+#define BLE_CHAR_PROPERTIES_WRITE               0x08
+#define BLE_CHAR_PROPERTIES_NOTIFY              0x10
+#define BLE_CHAR_PROPERTIES_INDICATE            0x20
+#define BLE_CHAR_PROPERTIES_AUTH_SIGNED_WR      0x40
+#define BLE_CHAR_PROPERTIES_RELIABLE_WRITE      0x80
+
+// GATT attribute access/permissions
+#define BLE_ATTR_ACCESS_NONE                    0
+#define BLE_ATTR_ACCESS_OPEN                    1
+#define BLE_ATTR_ACCESS_ENC_NO_MITM             2
+#define BLE_ATTR_ACCESS_ENC_WITH_MITM           3
+#define BLE_ATTR_ACCESS_SIGNED_NO_MITM          4
+#define BLE_ATTR_ACCESS_SIGNED_WITH_MITM        5
+
+// Miscellaneous GATT defines
+#define BLE_ATTR_DATA_LENGTH                    20
+#define BLE_ATTR_FLAG                           1
+
+// GATT Server UUIDs
+#define ESS_SERVICE_UUID                        0x181A
+#define ESS_PRESSURE_CHAR_UUID                  0x2A6D
+#define ESS_TEMPERATURE_CHAR_UUID               0x2A6E
+#define ESS_HUMIDITY_CHAR_UUID                  0x2A6F
+#define ESS_DEW_POINT_CHAR_UUID                 0x2A7B
+#define ESS_TRIGGER_DESC_UUID                   0x290D
+
+// GATT notifications/indications value
+#define BLE_GATT_CCC_DISABLED                   0x0000
+#define BLE_GATT_CCC_NOTIFY                     0x0001
+#define BLE_GATT_CCC_INDICATE                   0x0002
+
+// Clock selection defines
+#define CLOCK_SELECTION_KEY_ID                  210                   // CFG ID 210
+#define CLOCK_SELECTION_RC                      0x40140210
+#define CLOCK_SELECTION_CRYSTAL                 0x80140210
+
+// BLE Long range (CODED PHY) defines
+#define ENABLE_HIGH_BANDWIDTH_KEY_ID            214                   // CFG ID 214
+#define BLE_BANDWIDTH_NORMAL                    0
+#define BLE_BANDWIDTH_HIGH                      1
+
+// BME280 Sensor defines - See BME280 Datasheet (v1.6)
+#define BME280_I2C_ADDRESS                      0x76                  // I2C Address of BME280 sensor
+#define BME280_CHIP_ID_NUMBER                   0x60                  // BME280 Chip Identification number
+#define BME280_I2C_FREQUENCY                    250000                // I2C frequency is 250KHz
+#define BME280_CALIBRATION_REGISTER_BEG         "\88"                 // This is where the first set of calibration data is located (calib0..calib25)
+#define BME280_CALIBRATION_REGISTER_CALIB26     "\e1"
+#define BME280_CALIBRATION_REGISTER_CALIB29     0xe4
+#define BME280_CALIBRATION_REGISTER_CALIB30     0xe5
+#define BME280_CALIBRATION_REGISTER_CALIB31     0xe6
+#define BME280_CALIBRATION_DATA_READ_LEN_1      0x19
+#define BME280_CALIBRATION_DATA_READ_LEN_2      0x6
+#define BME280_DEVICE_RESET_TIMEOUT_MS          250                   // Time in millisconds for the device to reset
+#define BME280_DEVICE_WRITE_TIMEOUT_MS          10                    // Time in millisconds for the write operation
+#define BME280_FORCE_MODE_VALUE                 B'00100101            // Bits 1,0 - Enables force mode, bits 4,3,2 - Oversampling of temp data =1,
+                                                                      // bits 7,6,5 - Oversampling of pressure data = 1, for more information, see
+                                                                      // BME280 Datasheet (v1.6), section 5.4.5 (Page 29)
+
+// Register locations - See BME280 Datasheet (v1.6), section 5: Global
+// Memory Map and Register Desciption, pages 26-31
+#define BME280_REG_ID                           0xD0
+#define BME280_REG_RESET                        0xE0
+#define BME280_REG_CTRL_HUM                     0xF2
+#define BME280_REG_STATUS                       0xF3
+#define BME280_REG_CTRL_MEAS                    0xF4
+#define BME280_REG_CONFIG                       0xF5
+#define BME280_REG_PRESS_MSB                    0xF7
+#define BME280_REG_PRESS_LSB                    0xF8
+#define BME280_REG_PRESS_XLSB                   0xF9
+#define BME280_REG_TEMP_MSB                     0xFA
+#define BME280_REG_TEMP_LSB                     0xFB
+#define BME280_REG_TEMP_XLSB                    0xFC
+#define BME280_REG_HUM_MSB                      0xFD
+#define BME280_REG_HUM_LSB                      0xFE
+#define BME280_RESET_CODE                       0xB6
+
+//Calibration offsets - See BME280 Datasheet (v1.6), Section 4.2.2:
+// Trimming parameter readout, Table 16: Compensation parameter storage
+#define BME280_CALIB_DIG_T1_OFFSET              0
+#define BME280_CALIB_DIG_T2_OFFSET              2
+#define BME280_CALIB_DIG_T3_OFFSET              4
+#define BME280_CALIB_DIG_P1_OFFSET              6
+#define BME280_CALIB_DIG_P2_OFFSET              8
+#define BME280_CALIB_DIG_P3_OFFSET              10
+#define BME280_CALIB_DIG_P4_OFFSET              12
+#define BME280_CALIB_DIG_P5_OFFSET              14
+#define BME280_CALIB_DIG_P6_OFFSET              16
+#define BME280_CALIB_DIG_P7_OFFSET              18
+#define BME280_CALIB_DIG_P8_OFFSET              20
+#define BME280_CALIB_DIG_P9_OFFSET              22
+#define BME280_CALIB_DIG_H1_OFFSET              24
+#define BME280_CALIB_DIG_H2_OFFSET              0
+#define BME280_CALIB_DIG_H3_OFFSET              2
+#define BME280_CALIB_DIG_H4_OFFSET              3
+#define BME280_CALIB_DIG_H5_OFFSET              5
+#define BME280_CALIB_DIG_H6_OFFSET              5
+
+#define TIMER_MODE_SINGLE                       0
+#define TIMER_MODE_RECURRING                    1
+
+#define TIMER_TEMPERATURE_NOTIFICATIONS         0
+#define TIMER_HUMIDITY_NOTIFICATIONS            1
+#define TIMER_PRESSURE_NOTIFICATIONS            2
+#define TIMER_DEWPOINT_NOTIFICATIONS            3
+#define TIMER_ALL_SENSOR_READINGS               4
+
+#define TIMER_BLE_NOTIFICATIONS_TIMEOUT_MS      10000             // Sensor data is updated every 10 seconds if notifications are enabled
+#define TIMER_BLE_READINGS_TIMEOUT_MS           300000            // Sensor data is updated every 5 minutes if notifications are not enabled
+
+//******************************************************************************
+// Include other files
+//******************************************************************************
+
+//******************************************************************************
+// Global Variable Declarations
+//******************************************************************************
+
+dim rc            // Result code
+dim RestartModule // Used to restart module for configuration change
+
+// GATT table global Variables
+dim hEssSvc       // ESS Service handle, this is used when adding characteristics
+dim hTempChar     // Temperature Characteristic Handle, this is used when committing characteristic
+dim hHumChar      // Humidity Characteristic Handle, this is used when committing characteristic and updating values
+dim hPressChar    // Pressure Characteristic Handle, this is used when committing characteristic and updating values
+dim hDewChar      // DewPoint Characteristic Handle, this is used when committing characteristic and updating values
+
+// BME280 Sensor Global Variables
+dim I2Ch     : I2Ch = 0             // I2C Handle
+
+// Global calibration data variables that are used for calculating
+// temperature, pressure, and humidity
+dim dig_T1
+dim dig_T2
+dim dig_T3
+dim dig_P1
+dim dig_P2
+dim dig_P3
+dim dig_P4
+dim dig_P5
+dim dig_P6
+dim dig_P7
+dim dig_P8
+dim dig_P9
+dim dig_H1
+dim dig_H2
+dim dig_H3
+dim dig_H4
+dim dig_H5
+dim dig_H6
+
+dim temp_fine   // Global variable that contains a fine resolution temperature
+                // value and is used to calculate the pressure and humidity
+                // For more info, see BME280 Datasheet v1.6, section 4.2.3
+
+//******************************************************************************
+// Function and Subroutine definitions
+//******************************************************************************
+//------------------------------------------------------------------------------
+// Assert to check that a resultCode is 0 which means success
+//------------------------------------------------------------------------------
+#cmpif 0x00000001 : sub AssertRC(tag)
+#cmpif 0x00000001 :     if (rc != 0) then
+#cmpif 0x00000001 :         print "\n## Assert Error ";integer.h' rc;" @ tag ";tag;"\r\n"
+#cmpif 0x00000001 :     endif
+#cmpif 0x00000001 : endsub
+
+//------------------------------------------------------------------------------
+// Function for printing out debug messages
+//------------------------------------------------------------------------------
+#cmpif 0x00000001 : sub DebugPrint(byval stMsg$ as string)
+#cmpif 0x00000001 :     print "\n";stMsg$
+#cmpif 0x00000001 : endsub
+
+//------------------------------------------------------------------------------
+// Subroutine to implement a time delay
+//------------------------------------------------------------------------------
+sub DelayMS(nTimeMS as integer)
+    dim nBeginTimeMS
+    nBeginTimeMS = GetTickCount()
+    while (GetTickSince(nBeginTimeMS) < nTimeMS)
+        // Waiting for nTimeMS
+    endwhile
+endsub
+
+//------------------------------------------------------------------------------
+// This function forces the BME280 sensor values to be read and placed in the
+// relevant data registers. Separate functions are used to read the temperature,
+// humidity, and pressure data.
+//------------------------------------------------------------------------------
+function BME280EnableDataAcq()
+    dim nRegValue : nRegValue = 0x09    // Bits 0 and 3 are set to 1 when measuring operation is in progress
+                                        // For more info, See BME280 Datasheet (v1.6), Table 21: Register 0xF3 "status"
+
+    // Force mode value is 0x25 which means oversampling*1 for temperature, and pressure)
+    // For more information, see BME280 Datasheet v1.6, Section 5.4.5 (Page 29)
+    rc = I2CWriteReg8(BME280_I2C_ADDRESS, BME280_REG_CTRL_MEAS, BME280_FORCE_MODE_VALUE)
+    #cmpif 0x00000001 : AssertRC(290)
+    if (rc != 0) then
+        exitfunc rc
+    endif
+
+    // Add delay to allow the I2C operation to complete
+    DelayMS(BME280_DEVICE_WRITE_TIMEOUT_MS)
+
+    // Wait for measurement to complete - Bits 0 and 1 will only be cleared when
+    // when the results have been transferred to the data registers and the copying
+    // is done
+    while ((nRegValue & 0x09) != 0)
+        rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_STATUS, nRegValue)
+        #cmpif 0x00000001 : AssertRC(303)
+        if (rc != 0) then
+            exitfunc rc
+        endif
+    endwhile
+endfunc 0
+
+//------------------------------------------------------------------------------
+// Read sensor calibration data from the BM280 -- Note: I2C open should be called
+// before using this function otherwise the function will fail with I2C_NOT_OPEN
+//------------------------------------------------------------------------------
+sub BME280ReadCalibData()
+    dim wr$       : wr$ = BME280_CALIBRATION_REGISTER_BEG
+    dim rd$       : rd$ = ""          // Initialize as empty string
+    dim nReadLen  : nReadLen = BME280_CALIBRATION_DATA_READ_LEN_1
+    dim nRegValue : nRegValue = 0     // I2C Register value
+
+    // Read chunk of calibration data from calibration data register in the sensor
+    rc = I2CWRITEREAD(BME280_I2C_ADDRESS, wr$, rd$, nReadLen)
+    #cmpif 0x01 : AssertRC(322)
+
+    // Read calibration data from registers into global variables
+    // For more information, see BME280 Datasheet (v1.6), Table 16
+    rc = BleDecodeU16(rd$, dig_T1, BME280_CALIB_DIG_T1_OFFSET)
+    rc = BleDecodeS16(rd$, dig_T2, BME280_CALIB_DIG_T2_OFFSET)
+    rc = BleDecodeS16(rd$, dig_T3, BME280_CALIB_DIG_T3_OFFSET)
+    rc = BleDecodeU16(rd$, dig_P1, BME280_CALIB_DIG_P1_OFFSET)
+    rc = BleDecodeS16(rd$, dig_P2, BME280_CALIB_DIG_P2_OFFSET)
+    rc = BleDecodeS16(rd$, dig_P3, BME280_CALIB_DIG_P3_OFFSET)
+    rc = BleDecodeS16(rd$, dig_P4, BME280_CALIB_DIG_P4_OFFSET)
+    rc = BleDecodeS16(rd$, dig_P5, BME280_CALIB_DIG_P5_OFFSET)
+    rc = BleDecodeS16(rd$, dig_P6, BME280_CALIB_DIG_P6_OFFSET)
+    rc = BleDecodeS16(rd$, dig_P7, BME280_CALIB_DIG_P7_OFFSET)
+    rc = BleDecodeS16(rd$, dig_P8, BME280_CALIB_DIG_P8_OFFSET)
+    rc = BleDecodeS16(rd$, dig_P9, BME280_CALIB_DIG_P9_OFFSET)
+    rc = BleDecodeU8(rd$, dig_H1, BME280_CALIB_DIG_H1_OFFSET)
+
+    // Calibration data dig_H4 and dig_H5 are positioned differently in the
+    // registers therefore we're reading and decoding them separately
+    wr$ = BME280_CALIBRATION_REGISTER_CALIB26
+    rd$ = ""        // Reinitialize to empty string
+    nReadLen = BME280_CALIBRATION_DATA_READ_LEN_2
+    rc = I2CWRITEREAD(BME280_I2C_ADDRESS, wr$, rd$, nReadLen)
+    #cmpif 0x01 : AssertRC(346)
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_CALIBRATION_REGISTER_CALIB29, nRegValue)
+    #cmpif 0x01 : AssertRC(348)
+    dig_H4 = nRegValue << 4
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_CALIBRATION_REGISTER_CALIB30, nRegValue)
+    #cmpif 0x01 : AssertRC(351)
+    dig_H4 = dig_H4 | (nRegValue & 0xf)
+    dig_H5 = (nRegValue & 0xf0) >> 4
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_CALIBRATION_REGISTER_CALIB31, nRegValue)
+    #cmpif 0x01 : AssertRC(355)
+    dig_H5 = dig_H5 | (nRegValue << 4)
+
+    // Read rest of calibration data from the registers
+    rc = BleDecodeS16(rd$, dig_H2, BME280_CALIB_DIG_H2_OFFSET)
+    rc = BleDecodeU8(rd$, dig_H3, BME280_CALIB_DIG_H3_OFFSET)
+    rc = BleDecodeS8(rd$, dig_H6, BME280_CALIB_DIG_H6_OFFSET)
+endsub
+
+//------------------------------------------------------------------------------
+// Calculate temperature value using data read from the BME280 - Returns temperature
+// in DegC. resolution is 0.01 DegC, e.g. Output of 5123 equals 51.23 DegC
+//------------------------------------------------------------------------------
+function BME280CalcTemp()
+    //Fetch data from registers
+    dim nTempADC
+    dim nTempValue
+    dim nVar1, nVar2, nVar3
+    dim nReadVal1, nReadVal2, nReadVal3
+
+    // Read temperature data from the relevant registers
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_TEMP_XLSB, nReadVal1)
+    #cmpif 0x01 : AssertRC(377)
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_TEMP_LSB, nReadVal2)
+    #cmpif 0x01 : AssertRC(379)
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_TEMP_MSB, nReadVal3)
+    #cmpif 0x01 : AssertRC(381)
+
+    // Temperature ADC is a 20 bit value, therefore taking 4 bits from
+    // REG_TEMP_XLSB and bitwise shifting the values read from REG_TEMP_LSB
+    // and REG_TEMP_MSB accordingly. More information is found in BME280
+    // datasheet (v1.6), section 5.4.8 (page 31)
+    nTempADC = ((nReadVal1 & 0xf0) >> 4) | (nReadVal2 << 4) | (nReadVal3 << 12)
+
+    // Calculate final temperature value (See BME280 Datasheet v1.6, Section 4.2.3 Compensation formulas)
+    nVar1 = ((nTempADC >> 3) - (dig_T1 << 1)) * dig_T2 >> 11
+    nVar2 = ((nTempADC >> 4) - dig_T1 * (nTempADC >> 4) - dig_T1 >> 12) * dig_T3 >> 14
+    temp_fine = (nVar1 + nVar2)
+    nTempValue = (temp_fine * 5 + 128) >> 8
+endfunc nTempValue
+
+//------------------------------------------------------------------------------
+// Calculate humidity value using data read from the BME280 - Returns humidity
+// in %RH as unsigned 32 bit integer in Q22.10 format (22 integer and 10 fractional
+// bits). Output value of 47445 represents 47445/1024 = 46.333 %RH
+//------------------------------------------------------------------------------
+function BME280CalcHum()
+    // Fetch humidity data from the registers
+    dim nHumidityADC
+    dim nVar1
+    dim nReadValue1, nReadValue2
+
+    // Read humidity data from relevant registers
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_HUM_LSB, nReadValue1)
+    #cmpif 0x01 : AssertRC(409)
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_HUM_MSB, nReadValue2)
+    #cmpif 0x01 : AssertRC(411)
+
+    // Humidity ADC is a 16 bit value, therefore taking the 8-bit value read from
+    // REG_HUM_LSB and bitwise shifting the 8-bit vale read from REG_HUM_MSB
+    // to produce the 16-bit value. More information is found in BME280 datasheet,
+    // section 5.4.9 (page 31)
+    nHumidityADC = nReadValue1 | (nReadValue2 << 8)
+
+    // Calculate final humidity value (See BME280 Datasheet v1.6, Section 4.2.3 Compensation formulas)
+    nVar1 = temp_fine - 76800
+    nVar1 = ((((nHumidityADC << 14) - (dig_H4 << 20) - (dig_H5 * nVar1)) + 16384) >> 15) * (((((((nVar1 * dig_H6) >> 10) * (((nVar1 * dig_H3) >> 11) + 32768)) >> 10) + (2097152)) * dig_H2 + 8192) >> 14)
+    nVar1 = nVar1 - (((((nVar1 >> 15) * (nVar1 >> 15)) >> 7) * dig_H1) >> 4)
+    if (nVar1 < 0) then
+         nVar1 = 0
+    elseif (nVar1 > 419430400) then
+        nVar1 = 419430400
+    endif
+    nVar1 = nVar1 >> 12
+endfunc (nVar1 * 1000 / 1024)
+
+//------------------------------------------------------------------------------
+// Calculate pressure value using data read from the BM280 - Returns pressure in Pa
+// as unsigned 32 bit integer in Q24.8 format (24 integer bits and 8 fractional
+// bits). Output value of 24674867 represents 24674867/256 = 96386.2 Pa = 963.862 hPa
+//------------------------------------------------------------------------------
+function BME280CalcPres()
+    // Fetch pressure data from the registers
+    dim nPressureADC
+    dim nPressureValue
+    dim nVar1, nVar2
+    dim nReadVal1, nReadVal2, nReadVal3
+
+    // Read pressure data from the relevant registers
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_PRESS_XLSB, nReadVal1)
+    #cmpif 0x01 : AssertRC(445)
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_PRESS_LSB, nReadVal2)
+    #cmpif 0x01 : AssertRC(447)
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_PRESS_MSB, nReadVal3)
+    #cmpif 0x01 : AssertRC(449)
+
+    // Pressure ADC is a 20 bit value, therefore taking 4 bits from
+    // REG_PRESS_XLSB and bitwise shifting the values read from REG_PRESS_LSB
+    // and REG_PRESS_MSB accordingly. More information is found in BME280
+    // datasheet (v1.6), section 5.4.7 (page 30)
+    nPressureADC = ((nReadVal1 & 0xf0) >> 4) | (nReadVal2 << 4) | (nReadVal3 << 12)
+
+    // Calculate final pressure value (See BME280 Datasheet v1.6, Section 4.2.3 Compensation formulas)
+    nVar1 = (temp_fine >> 1) - 64000
+    nVar2 = (((nVar1 >> 2) * (nVar1 >> 2)) >> 11 ) * dig_P6
+    nVar2 = nVar2 + ((nVar1 * dig_P5) << 1)
+    nVar2 = (nVar2 >> 2) + (dig_P4 << 16)
+    nVar1 = (((dig_P3 * (((nVar1 >> 2) * (nVar1 >> 2)) >> 13 )) >> 3) + ((dig_P2 * nVar1) >> 1)) >> 18
+    nVar1 = (((32768 + nVar1)) * dig_P1) >> 15
+    if (nVar1 == 0) then
+        exitfunc 0
+    endif
+    nPressureValue = ((1048576 - nPressureADC) - (nVar2 >> 12)) * 3125
+    if (nPressureValue < 0x80000000) then
+        nPressureValue = (nPressureValue << 1) / (nVar1)
+    else
+        nPressureValue = (nPressureValue / nVar1) << 1
+    endif
+    nVar1 = (dig_P9 * ((((nPressureValue >> 3) * (nPressureValue >> 3)) >> 13))) >> 12
+    nVar2 = ((nPressureValue >> 2) * dig_P8) >> 13
+    nPressureValue = (nPressureValue + ((nVar1 + nVar2 + dig_P7) >> 4))
+
+    nPressureValue = nPressureValue << 8
+endfunc (nPressureValue * 10 / 256)
+
+//------------------------------------------------------------------------------
+// Calculate dew point value using data read from the BM280 - Returns the Dew
+// Point value in degC - This is only an estimation and is not a precise value
+//------------------------------------------------------------------------------
+function CalcDewPoint(Temperature as float, Humidity as float)
+    dim H as float
+    dim Dp as float
+    // The given temperature value has a resolution of 0.01 degrees Celsius, getting degC value
+    Temperature = Temperature / 100
+    // The given humidity value has a resolution of 0.01, getting % value
+    Humidity = Humidity / 1000
+
+    // Taken from http://irtfweb.ifa.hawaii.edu/~tcs3/tcs3/Misc/Dewpoint_Calculation_Humidity_Sensor_E.pdf
+    H = (log10(Humidity)-2)/0.4343 + (17.62*Temperature)/(243.12+Temperature)
+    Dp = 243.12*H/(17.62-H)         // This is the dew point in Celsius
+endfunc Dp
+
+//------------------------------------------------------------------------------
+// Initialize BME280 Sensor
+//------------------------------------------------------------------------------
+Sub BME280Initialise()
+    dim nReadVal
+
+    rc = I2COpen(BME280_I2C_FREQUENCY, 0, I2Ch)
+    #cmpif 0x00000001 : AssertRC(504)
+
+    //Check if device if a BME280
+    rc = I2CReadReg8(BME280_I2C_ADDRESS, BME280_REG_ID, nReadVal)
+    #cmpif 0x00000001 : AssertRC(508)
+
+    if (nReadVal == BME280_CHIP_ID_NUMBER) then
+        #cmpif 0x00000001 : DebugPrint("\n --- BME280 detected.")
+
+        // Reset device to known state
+        rc = I2CWriteReg8(BME280_I2C_ADDRESS, BME280_REG_RESET, BME280_RESET_CODE)
+        #cmpif 0x00000001 : AssertRC(515)
+
+        //Wait for device to reset
+        DelayMS(BME280_DEVICE_RESET_TIMEOUT_MS)
+
+        // Read calibration data
+        BME280ReadCalibData()
+
+        // Set the humidity data acquisition options (0x01 means oversampling*1)
+        // For more info, see BME280 datasheet v1.6, Table 19 (Register 0xF2 "ctrl_hum")
+        rc = I2CWriteReg8(BME280_I2C_ADDRESS, BME280_REG_CTRL_HUM, 0x01)
+        #cmpif 0x00000001 : AssertRC(526)
+
+        // Set the temperature and pressure acquisition options (0x24 means oversampling*1 for temperature and pressure)
+        // For more info, see BME280 datasheet v1.6, Table 22 (Register 0xF4 "ctrl_meas")
+        rc = I2CWriteReg8(BME280_I2C_ADDRESS, BME280_REG_CTRL_MEAS, 0x24)
+        #cmpif 0x00000001 : AssertRC(531)
+
+    else
+        #cmpif 0x00000001 : DebugPrint("\n --- Failed to detect BME280 sensor.")
+    endif
+
+    // Close I2C to save power
+    I2CClose(I2Ch)
+endsub
+
+//-------------------------------------------------------------------------------
+// This subroutine enables the external 32KHz crystal
+//-------------------------------------------------------------------------------
+sub EnableCrystal()
+    dim nValue
+    // Get current clock configuration
+	rc = NvCfgKeyGet(CLOCK_SELECTION_KEY_ID, nValue)
+
+    // Check if the 32KHz crystal is enabled
+    if  (nValue != CLOCK_SELECTION_CRYSTAL) then
+        // Change the clock selection to 32KHz crystal - equialent to "at+cfg 210 0x80140210"
+        rc = NvCfgKeySet(CLOCK_SELECTION_KEY_ID, CLOCK_SELECTION_CRYSTAL)
+        // Module needs to be restarted for configuration to take effect
+        RestartModule = 1
+    endif
+endsub
+
+//-------------------------------------------------------------------------------
+// This subroutine enables high bandwidth which is required in order to support
+// CODED PHY adverts and connections
+//-------------------------------------------------------------------------------
+sub BleEnableHighBw()
+    dim nBandwidth
+    // Get current bandwidth configuration
+	rc = NvCfgKeyGet(ENABLE_HIGH_BANDWIDTH_KEY_ID, nBandwidth)
+
+    // Check if this is high or normal bandwidth
+    if  (nBandwidth != BLE_BANDWIDTH_HIGH) then
+        // Change the bandwidth configuration to HIGH - equialent to "at+cfg 214 1"
+        rc = NvCfgKeySet(ENABLE_HIGH_BANDWIDTH_KEY_ID, BLE_BANDWIDTH_HIGH)
+        // Module needs to be restarted for configuration to take effect
+        RestartModule = 1
+    endif
+endsub
+
+//------------------------------------------------------------------------------
+// Subroutine for setting up GATT table
+// Note: for more details, please see flowchart in BL654 Extensions Guide,
+// Section 5.8 GATT Server Function
+//------------------------------------------------------------------------------
+sub GattTableCreate()
+    dim mdVal, mdCccd, mdSccd                                                               // Metadata for value, CCCD, and SCCD respectively
+    dim hUuidESS            : hUuidESS = BleHandleUuid16(ESS_SERVICE_UUID)                  // UUID Handle, this is used when creating service
+    dim hUuidPressure       : hUuidPressure = BleHandleUuid16(ESS_PRESSURE_CHAR_UUID)       // UUID Handle, this is used when creating Pressure characteristic
+    dim hUuidTemperature    : hUuidTemperature = BleHandleUuid16(ESS_TEMPERATURE_CHAR_UUID) // UUID Handle, this is used when creating temperature characteristic
+    dim hUuidHumidity       : hUuidHumidity = BleHandleUuid16(ESS_HUMIDITY_CHAR_UUID)       // UUID Handle, this is used when creating Humidity characteristic
+    dim hUuidDewPoint       : hUuidDewPoint = BleHandleUuid16(ESS_DEW_POINT_CHAR_UUID)      // UUID Handle, this is used when creating DewPoint characteristic
+    dim nProperties         : nProperties = 0                                               // Characteristic properties, used when creating characteristic. See BLE_CHAR_PROPERTIES_XXX
+    dim sCharVal$           : sCharVal$ = ""                                                // Initial characteristic value, used when creating characteristic
+    dim sDescVal$           : sDescVal$ = "\01\0A\00\00"                                    // Descriptor value, 01: Notifies are sent per time interval, 0A: The interval is 10 seconds
+
+    // ----> Step 1: Create Environmental Sensor Service (ESS)
+    rc = BleServiceNew(BLE_SERVICE_PRIMARY, hUuidESS, hEssSvc)
+    #cmpif 0x00000001 : AssertRC(594)
+
+    // ----> Step 2a: Create Temperature Characteristic
+    mdVal = BleAttrMetaDataEx(BLE_ATTR_ACCESS_OPEN, BLE_ATTR_ACCESS_NONE, BLE_ATTR_DATA_LENGTH,BLE_ATTR_FLAG,rc)
+    #cmpif 0x00000001 : AssertRC(598)
+    mdCccd = BleAttrMetaDataEx(BLE_ATTR_ACCESS_OPEN, BLE_ATTR_ACCESS_OPEN, BLE_ATTR_DATA_LENGTH,BLE_ATTR_FLAG,rc)
+    #cmpif 0x00000001 : AssertRC(600)
+    nProperties = BLE_CHAR_PROPERTIES_READ | BLE_CHAR_PROPERTIES_NOTIFY
+    rc = BleCharNew(nProperties, hUuidTemperature, mdVal, mdCccd, mdSccd)
+    #cmpif 0x00000001 : AssertRC(603)
+    // Temperature is a 16bit value, so add initial value accordingly
+    sCharVal$ = "\00\00"
+    rc=BleCharDescAdd(ESS_TRIGGER_DESC_UUID,sDescVal$,mdVal)
+    #cmpif 0x00000001 : AssertRC(607)
+    rc = BleCharCommit(hEssSvc, sCharVal$, hTempChar)
+    #cmpif 0x00000001 : AssertRC(609)
+
+    // ----> Step 2b: Create Humidity Characteristic
+    mdVal = BleAttrMetaDataEx(BLE_ATTR_ACCESS_OPEN, BLE_ATTR_ACCESS_NONE, BLE_ATTR_DATA_LENGTH,BLE_ATTR_FLAG,rc)
+    #cmpif 0x00000001 : AssertRC(613)
+    mdCccd = BleAttrMetaDataEx(BLE_ATTR_ACCESS_OPEN, BLE_ATTR_ACCESS_OPEN, BLE_ATTR_DATA_LENGTH,BLE_ATTR_FLAG,rc)
+    #cmpif 0x00000001 : AssertRC(615)
+    nProperties = BLE_CHAR_PROPERTIES_READ | BLE_CHAR_PROPERTIES_NOTIFY
+    rc = BleCharNew(nProperties, hUuidHumidity, mdVal, mdCccd, mdSccd)
+    #cmpif 0x00000001 : AssertRC(618)
+    // Add ESS Trigger Descriptors
+    rc=BleCharDescAdd(ESS_TRIGGER_DESC_UUID,sDescVal$,mdVal)
+    #cmpif 0x00000001 : AssertRC(621)
+    // Humidity is a 16bit value, so add initial value accordingly
+    sCharVal$ = "\00\00"
+    rc = BleCharCommit(hEssSvc, sCharVal$, hHumChar)
+    #cmpif 0x00000001 : AssertRC(625)
+
+    // ----> Step 2c: Create Pressure Characteristic
+    mdVal = BleAttrMetaDataEx(BLE_ATTR_ACCESS_OPEN, BLE_ATTR_ACCESS_NONE, BLE_ATTR_DATA_LENGTH,BLE_ATTR_FLAG,rc)
+    #cmpif 0x00000001 : AssertRC(629)
+    mdCccd = BleAttrMetaDataEx(BLE_ATTR_ACCESS_OPEN, BLE_ATTR_ACCESS_OPEN, BLE_ATTR_DATA_LENGTH,BLE_ATTR_FLAG,rc)
+    #cmpif 0x00000001 : AssertRC(631)
+    nProperties = BLE_CHAR_PROPERTIES_READ | BLE_CHAR_PROPERTIES_NOTIFY
+    rc = BleCharNew(nProperties, hUuidPressure, mdVal, mdCccd, mdSccd)
+    #cmpif 0x00000001 : AssertRC(634)
+    // Add ESS Trigger Descriptor
+    rc=BleCharDescAdd(ESS_TRIGGER_DESC_UUID,sDescVal$,mdVal)
+    #cmpif 0x00000001 : AssertRC(637)
+    // Pressure is a 32bit value, so add initial value accordingly
+    sCharVal$ = "\00\00\00\00"
+    rc = BleCharCommit(hEssSvc, sCharVal$, hPressChar)
+    #cmpif 0x00000001 : AssertRC(641)
+
+    // ----> Step 2d: Create Dew Point Characteristic
+    mdVal = BleAttrMetaDataEx(BLE_ATTR_ACCESS_OPEN, BLE_ATTR_ACCESS_NONE, BLE_ATTR_DATA_LENGTH,BLE_ATTR_FLAG,rc)
+    #cmpif 0x00000001 : AssertRC(645)
+    mdCccd = BleAttrMetaDataEx(BLE_ATTR_ACCESS_OPEN, BLE_ATTR_ACCESS_OPEN, BLE_ATTR_DATA_LENGTH,BLE_ATTR_FLAG,rc)
+    #cmpif 0x00000001 : AssertRC(647)
+    nProperties = BLE_CHAR_PROPERTIES_READ | BLE_CHAR_PROPERTIES_NOTIFY
+    rc = BleCharNew(nProperties, hUuidDewPoint, mdVal, mdCccd, mdSccd)
+    #cmpif 0x00000001 : AssertRC(650)
+    // Add ESS Trigger Descriptor
+    rc=BleCharDescAdd(ESS_TRIGGER_DESC_UUID,sDescVal$,mdVal)
+    #cmpif 0x00000001 : AssertRC(653)
+    // Dew Point is a 8bit value, so add initial value accordingly
+    sCharVal$ = "\00"
+    rc = BleCharCommit(hEssSvc, sCharVal$, hDewChar)
+    #cmpif 0x00000001 : AssertRC(657)
+
+    // ----> Step 3: Commit the Environmental service
+    rc = BleServiceCommit(hEssSvc)
+    #cmpif 0x00000001 : AssertRC(661)
+endsub
+
+//------------------------------------------------------------------------------
+// Subroutine for starting BLE adverts
+//------------------------------------------------------------------------------
+sub AdvertStart()
+    dim remoteAddr$ : remoteAddr$ = ""	// Only used for directed adverts
+
+    rc = BleAdvertStart(ADVERT_TYPE, remoteAddr$, ADVERT_INTERVAL, ADVERT_TIMEOUT, ADVERT_FILTER_POLICY)
+    #cmpif 0x00000001 : AssertRC(671)
+endsub
+
+//------------------------------------------------------------------------------
+// AdvertInitialise - This function initialises GAP service, creates the advert and
+// and scan report, and finally commits them before advertising
+//------------------------------------------------------------------------------
+sub AdvertInitialise()
+    dim advRpt$ : advRpt$ = ""
+    dim scnRpt$ : scnRpt$ = ""
+
+    // Initialise GAP service
+    rc = BleGapSvcInit(DEVICE_NAME, NAME_WRITABLE, APPEARANCE, CONNECTION_INTERVAL_MIN, CONNECTION_INTERVAL_MAX, SUPERVISION_TIMEOUT,  SLAVE_LATENCY)
+    #cmpif 0x01 : AssertRC(684)
+
+    // Initialise advert report
+    rc = BleAdvRptInit(advRpt$, ADVERT_FLAGS_AD, ADVERT_APPEARANCE, ADVERT_MAX_DEV_NAME_SIZE)
+    #cmpif 0x01 : AssertRC(688)
+
+    // Initialise scan report
+    rc = BleScanRptInit(scnRpt$)
+    #cmpif 0x01 : AssertRC(692)
+
+    // Append ESS UUID
+    rc = BleAdvRptAddUuid16(scnRpt$, ESS_SERVICE_UUID, -1, -1, -1, -1, -1)
+    #cmpif 0x01 : AssertRC(696)
+
+    // Commit advert report
+    rc = BleAdvRptsCommit(advRpt$, scnRpt$)
+    #cmpif 0x01 : AssertRC(700)
+endsub
+
+//------------------------------------------------------------------------------
+// This creates the device information service
+//------------------------------------------------------------------------------
+sub DeviceInfoSetup()
+    dim mf$, md$, sy$, rl$
+
+    mf$=MANF_NAME
+    md$=MODELSTR
+    rl$=REGLIST
+    sy$=SYSID
+
+    // Create the device information service
+    rc = BleSvcRegDevInfo(mf$, md$, SERIALNUM, HWREV, SWREV, sy$, rl$, PNPID)
+    #cmpif 0x01 : AssertRC(716)
+endsub
+
+//------------------------------------------------------------------------------
+// This event handler is triggered when Timer 4 expires. Temperature, humidity,
+// pressure and dew point values are updated so that when there is a remote
+// GATT value read operation the values would be relatively recent
+//------------------------------------------------------------------------------
+function CharValueUpdate()
+    dim nTempVal, nHumVal, nPressVal,  nDewPointVal
+    dim sValTemp$, sValHum$, sValPress$, sValDewP$
+
+    // Open I2C so that we can read data from the sensor
+    rc = I2COpen(BME280_I2C_FREQUENCY, 0, I2Ch)
+    #cmpif 0x01 : AssertRC(730)
+
+    // Enable sensor data acquisition before reading data
+    rc = BME280EnableDataAcq()
+
+    // Get temperature value
+    nTempVal = BME280CalcTemp()
+    // Get humidity value
+    nHumVal = BME280CalcHum()
+    // Get pressure value
+    nPressVal = BME280CalcPres()
+
+    // Close I2C to save some power
+    I2Cclose(I2Ch)
+
+    // Get dew point value
+    nDewPointVal = CalcDewPoint(nTempVal, nHumVal)
+    nHumVal = nHumVal / 10
+
+    // Encode the data into relevant format and update characteristic values
+    rc = bleencode16(sValTemp$, nTempVal, 0)
+    #cmpif 0x01 : AssertRC(751)
+    rc = BleCharValueWrite(hTempChar, sValTemp$)
+    #cmpif 0x01 : AssertRC(753)
+    rc = bleencode16(sValHum$, nHumVal, 0)
+    #cmpif 0x01 : AssertRC(755)
+    rc = BleCharValueWrite(hHumChar, sValHum$)
+    #cmpif 0x01 : AssertRC(757)
+    rc = bleencode32(sValPress$, nPressVal, 0)
+    #cmpif 0x01 : AssertRC(759)
+    rc = BleCharValueWrite(hPressChar, sValPress$)
+    #cmpif 0x01 : AssertRC(761)
+    rc = bleencode8(sValDewP$, nDewPointVal, 0)
+    #cmpif 0x01 : AssertRC(763)
+    rc = BleCharValueWrite(hDewChar, sValDewP$)
+    #cmpif 0x01 : AssertRC(765)
+endfunc 1
+
+//------------------------------------------------------------------------------
+// OnConnection
+//------------------------------------------------------------------------------
+sub OnConnect(nCtx)
+    // Do an initial read of the sensor data and update the values. Also
+    // Start a timer to regularly update characteristics with values
+    rc = CharValueUpdate()
+    TimerStart(TIMER_ALL_SENSOR_READINGS, TIMER_BLE_READINGS_TIMEOUT_MS, TIMER_MODE_RECURRING)
+endsub
+
+//------------------------------------------------------------------------------
+// OnDisconnection - This handler is called when the remote device
+// disconnects from the sensor
+//------------------------------------------------------------------------------
+sub OnDisconnect(nCtx)
+    AdvertStart()
+
+    // Cancel all timers if they are running
+    TimerCancel(TIMER_TEMPERATURE_NOTIFICATIONS)
+    TimerCancel(TIMER_HUMIDITY_NOTIFICATIONS)
+    TimerCancel(TIMER_PRESSURE_NOTIFICATIONS)
+    TimerCancel(TIMER_DEWPOINT_NOTIFICATIONS)
+    TimerCancel(TIMER_ALL_SENSOR_READINGS)
+endsub
+
+//------------------------------------------------------------------------------
+// Startup
+//------------------------------------------------------------------------------
+sub Startup()
+    RestartModule = 0
+
+    // Enable the 32KHz crystal
+    EnableCrystal()
+
+    // Enable high bandwidth in order to use CODED PHY
+    BleEnableHighBw()
+
+    if (RestartModule == 1) then
+        // Reset the module so that the data is overwritten
+        Reset(0)
+    endif
+
+    // Send startup message if we are in debug mode
+    #cmpif 0x00000001 : DebugPrint("LAIRD CONNECTIVITY BL654 SENSOR - DEBUG MODE")
+
+    // Set pairing defaults
+    rc = BleSecMngrIoCap(BLE_IOCAPABILITY_NONE)
+    #cmpif 0x01 : AssertRC(815)
+    // Set preferred pairing mechanism to be LESC
+    rc = BleSecMngrLescPairingPref(BLE_PAIR_LESC_PAIRING)
+    #cmpif 0x01 : AssertRC(818)
+
+    // Set BLE Tx Power
+    rc = BleTxPowerSet(BLE_TX_POWER)
+    #cmpif 0x01 : AssertRC(822)
+
+    // Call subroutine for setting up device information service
+    DeviceInfoSetup()
+
+    // Call subroutine for creating GATT table
+    GattTableCreate()
+
+    // Call subroutine for initialising GAP service and advert report
+    AdvertInitialise()
+
+    // Call subroutine for starting adverts
+    AdvertStart()
+
+    // Initialize BME280 Sensor
+    BME280Initialise()
+endsub
+
+//******************************************************************************
+// Handler definitions
+//******************************************************************************
+
+//------------------------------------------------------------------------------
+// This event handler is triggered after the adverts timeout
+//------------------------------------------------------------------------------
+function HandlerAdvTimeout()
+    // Call subroutine for starting adverts
+    AdvertStart()
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This handler is called when there is a BLE disconnection
+//------------------------------------------------------------------------------
+function HandlerBleDisconnect(hConn, nRsn)
+    #cmpif 0x00000001 : dim sDbgMsg$, sRsn$
+    // Construct a message with the disconnection reason in HEX
+    #cmpif 0x00000001 : sprint #sRsn$, integer.h' nRsn
+    #cmpif 0x00000001 : sDbgMsg$ = " --- Disconnected, Reason: 0x" + sRsn$
+    #cmpif 0x00000001 : DebugPrint(sDbgMsg$)
+    OnDisconnect(hConn)
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This event handler is triggered when a generic BLE Message occurs. For
+// a list of supported messages, see BLE_EVBLEMSGID_XXX
+//------------------------------------------------------------------------------
+function HandlerBleMsg(nMsgId, nCtx)
+    select nMsgId
+
+    case BLE_EVBLEMSGID_CONNECT
+        #cmpif 0x00000001 : DebugPrint(" +++ Connected")
+        OnConnect(nCtx)
+
+    case BLE_EVBLEMSGID_DISCONNECT
+        // Do nothing as this is handled by EVDISCON
+
+    case BLE_EVBLEMSGID_NEW_BOND
+        #cmpif 0x00000001 : DebugPrint(" +++ New Bond")
+
+    case BLE_EVBLEMSGID_AUTH_KEY_REQUEST
+        #cmpif 0x00000001 : DebugPrint(" +++ Auth Key Request")
+
+    case BLE_EVBLEMSGID_CONN_TO_BONDED_MASTER
+        #cmpif 0x00000001 : DebugPrint(" +++ Conn to Bonded Master")
+
+    case BLE_EVBLEMSGID_UPDATED_BOND
+        #cmpif 0x00000001 : DebugPrint(" +++ Updated Bond")
+
+    case BLE_EVBLEMSGID_ENCRYPTED
+        #cmpif 0x00000001 : DebugPrint(" +++ Encrypted Connection")
+
+    case BLE_EVBLEMSGID_UNENCRYPTED
+        #cmpif 0x00000001 : DebugPrint(" +++ Connection unencrypted")
+
+    case BLE_EVBLEMSGID_BOND_ADDFAIL
+        #cmpif 0x00000001 : DebugPrint(" +++ Bond Add Failed")
+
+    case BLE_EVBLEMSGID_AUTHENTICATION_FAILED
+        #cmpif 0x00000001 : DebugPrint(" +++ Auth Failed")
+
+    case BLE_EVBLEMSGID_LESC_PAIRING
+        #cmpif 0x00000001 : DebugPrint(" +++ LESC pairing")
+
+    case else
+        #cmpif 0x00000001 : DebugPrint(" +++ Unknown BLE Message")
+
+    endselect
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This event handler is triggered when notifications for one of the
+// registered characteristics are enabled/disabled
+//------------------------------------------------------------------------------
+function HandlerCharCccd(hChar, nVal)
+    if (hChar == hTempChar) then
+        if (nVal == BLE_GATT_CCC_NOTIFY) then
+            #cmpif 0x00000001 : DebugPrint("\n ++++ Notifications enabled for temperature characteristic")
+            // Start a timer for sending out temperature data
+            TimerStart(TIMER_TEMPERATURE_NOTIFICATIONS, TIMER_BLE_NOTIFICATIONS_TIMEOUT_MS, TIMER_MODE_RECURRING)
+        elseif (nVal == BLE_GATT_CCC_DISABLED) then
+            #cmpif 0x00000001 : DebugPrint("\n ---- Notifications disabled for temperature characteristic")
+            // Cancel timer
+            TimerCancel(TIMER_TEMPERATURE_NOTIFICATIONS)
+        endif
+
+    elseif (hChar == hHumChar) then
+        if (nVal == BLE_GATT_CCC_NOTIFY) then
+            #cmpif 0x00000001 : DebugPrint("\n ++++ Notifications enabled for humidity characteristic")
+            // Start a timer for sending out humidity data
+            TimerStart(TIMER_HUMIDITY_NOTIFICATIONS, TIMER_BLE_NOTIFICATIONS_TIMEOUT_MS, TIMER_MODE_RECURRING)
+        elseif (nVal == BLE_GATT_CCC_DISABLED) then
+            #cmpif 0x00000001 : DebugPrint("\n ---- Notifications disabled for humidity characteristic")
+            // Cancel timer
+            TimerCancel(TIMER_HUMIDITY_NOTIFICATIONS)
+        endif
+
+    elseif (hChar == hPressChar) then
+        if (nVal == BLE_GATT_CCC_NOTIFY) then
+            #cmpif 0x00000001 : DebugPrint("\n ++++ Notifications enabled for pressure characteristic")
+            // Start a timer for sending out pressure data
+            TimerStart(TIMER_PRESSURE_NOTIFICATIONS, TIMER_BLE_NOTIFICATIONS_TIMEOUT_MS, TIMER_MODE_RECURRING)
+        elseif (nVal == BLE_GATT_CCC_DISABLED) then
+            // Cancel timer
+            #cmpif 0x00000001 : DebugPrint("\n ---- Notifications disabled for pressure characteristic")
+            TimerCancel(TIMER_PRESSURE_NOTIFICATIONS)
+        endif
+
+    elseif (hChar == hDewChar) then
+        if (nVal == BLE_GATT_CCC_NOTIFY) then
+            // Start a timer for sending out dew point data
+            #cmpif 0x00000001 : DebugPrint("\n ++++ Notifications enabled for Dew Point characteristic")
+            TimerStart(TIMER_DEWPOINT_NOTIFICATIONS, TIMER_BLE_NOTIFICATIONS_TIMEOUT_MS, TIMER_MODE_RECURRING)
+        elseif (nVal == BLE_GATT_CCC_DISABLED) then
+            // Cancel timer
+            #cmpif 0x00000001 : DebugPrint("\n ---- Notifications disabled for Dew Point characteristic")
+            TimerCancel(TIMER_DEWPOINT_NOTIFICATIONS)
+        endif
+    endif
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This event handler is triggered when Timer 0 expires (Temperature)
+//------------------------------------------------------------------------------
+function HandlerTimer0()
+    dim nVal, sValTemp$
+
+    // Open I2C so that we can read data from the sensor
+    rc = I2COpen(BME280_I2C_FREQUENCY, 0, I2Ch)
+    #cmpif 0x01 : AssertRC(970)
+
+    // Enable sensor data acquisition before reading data
+    rc = BME280EnableDataAcq()
+
+    // Get temperature value
+    nVal = BME280CalcTemp()
+
+    // Close I2C to save some power
+    I2Cclose(I2Ch)
+
+    // Encode the data in a format that can be sent out as notifications
+    rc = bleencode16(sValTemp$, nVal, 0)
+    #cmpif 0x01 : AssertRC(983)
+
+    // Send out notifications
+    rc = BleCharValueNotify(hTempChar, sValTemp$)
+    #cmpif 0x01 : AssertRC(987)
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This event handler is triggered when Timer 1 expires (Humidity)
+//------------------------------------------------------------------------------
+function HandlerTimer1()
+    dim nVal, sValHum$
+
+    // Open I2C so that we can read data from the sensor
+    rc = I2COpen(BME280_I2C_FREQUENCY, 0, I2Ch)
+    #cmpif 0x01 : AssertRC(998)
+
+    // Enable sensor data acquisition before reading data
+    rc = BME280EnableDataAcq()
+
+    // Get humidity value
+    nVal = BME280CalcHum() / 10
+
+    // Close I2C to save some power
+    I2Cclose(I2Ch)
+
+    // Encode the data in a format that can be sent out as notifications
+    rc = bleencode16(sValHum$, nVal, 0)
+    #cmpif 0x01 : AssertRC(1011)
+
+    // Send out notifications
+    rc = BleCharValueNotify(hHumChar, sValHum$)
+    #cmpif 0x01 : AssertRC(1015)
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This event handler is triggered when Timer 2 expires (Pressure)
+//------------------------------------------------------------------------------
+function HandlerTimer2()
+    dim nVal, sValPress$
+
+    // Open I2C so that we can read data from the sensor
+    rc = I2COpen(BME280_I2C_FREQUENCY, 0, I2Ch)
+    #cmpif 0x01 : AssertRC(1026)
+
+    // Enable sensor data acquisition before reading data
+    rc = BME280EnableDataAcq()
+
+    // Get pressure value
+    nVal = BME280CalcPres()
+
+    // Close I2C to save some power
+    I2Cclose(I2Ch)
+
+    // Encode the data in a format that can be sent out as notifications
+    rc = bleencode32(sValPress$, nVal, 0)
+    #cmpif 0x01 : AssertRC(1039)
+
+    // Send out notifications
+    rc = BleCharValueNotify(hPressChar, sValPress$)
+    #cmpif 0x01 : AssertRC(1043)
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This event handler is triggered when Timer 3 expires (Dew Point)
+//------------------------------------------------------------------------------
+function HandlerTimer3()
+    dim nTempVal, nHumVal, nDewPointVal, sValDewP$, sMsg$
+
+    // Open I2C so that we can read data from the sensor
+    rc = I2COpen(BME280_I2C_FREQUENCY, 0, I2Ch)
+    #cmpif 0x01 : AssertRC(1054)
+
+    // Enable sensor data acquisition before reading data
+    rc = BME280EnableDataAcq()
+
+    // Get temperature value and humidity values to calculate Dew Point
+    nTempVal = BME280CalcTemp()
+    nHumVal = BME280CalcHum()
+    nDewPointVal = CalcDewPoint(nTempVal,nHumVal)
+
+    // Close I2C to save some power
+    I2Cclose(I2Ch)
+
+    // Encode the data in a format that can be sent out as notifications
+    rc = bleencode8(sValDewP$, nDewPointVal, 0)
+    #cmpif 0x01 : AssertRC(1069)
+
+    // Send out notifications
+    rc = BleCharValueNotify(hDewChar, sValDewP$)
+    #cmpif 0x01 : AssertRC(1073)
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This handler is called when the BLE PHY is changed
+//------------------------------------------------------------------------------
+function HandlerPhyChngd(hConn, nStatus, PhyTx, PhyRx)
+    #cmpif 0x00000001 : dim sDbgMsg$
+    #cmpif 0x00000001 : sprint #sDbgMsg$, "PhyTx=";PhyTx;" PhyRx=";PhyRx
+    #cmpif 0x00000001 : sDbgMsg$ = " +++ BLE PHY Changed : " + sDbgMsg$
+    #cmpif 0x00000001 : DebugPrint(sDbgMsg$)
+endfunc 1
+
+//------------------------------------------------------------------------------
+// This handler is called when there is a requiest for PHY change
+//------------------------------------------------------------------------------
+function HandlerPhyReq(hConn, PhyTx, PhyRx)
+    // Accept incoming PHY request by default
+    rc = BlePhySet(hConn, PhyTx, PhyRx, 0)
+    #cmpif 0x00000001 : AssertRC(1092)
+endfunc 1
+
+//******************************************************************************
+// Setup event handlers
+//******************************************************************************
+OnEvent EVBLEMSG                call    HandlerBleMsg
+OnEvent EVDISCON                call    HandlerBleDisconnect
+OnEvent EVBLE_ADV_TIMEOUT       call    HandlerAdvTimeout
+OnEvent EVCHARCCCD              call    HandlerCharCccd
+OnEvent EVBLE_PHY_UPDATED       call    HandlerPhyChngd
+OnEvent EVBLE_PHY_REQUEST       call    HandlerPhyReq
+OnEvent EVTMR0                  call    HandlerTimer0
+OnEvent EVTMR1                  call    HandlerTimer1
+OnEvent EVTMR2                  call    HandlerTimer2
+OnEvent EVTMR3                  call    HandlerTimer3
+OnEvent EVTMR4                  call    CharValueUpdate
+
+//******************************************************************************
+// Equivalent to main() in C
+//******************************************************************************
+Startup()
+
+//------------------------------------------------------------------------------
+// Wait for a synchronous event.
+// An application can have multiple <WaitEvent> statements
+//------------------------------------------------------------------------------
+waitevent
